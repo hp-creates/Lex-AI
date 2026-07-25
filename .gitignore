@@ -1,0 +1,64 @@
+# === Python ===
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.venv/
+venv/
+*.egg-info/
+dist/
+build/
+.eggs/
+
+# === Environment Variables (NEVER commit secrets) ===
+.env
+.env.local
+.env.production
+backend/.env
+frontend/.env
+
+# === Node ===
+node_modules/
+frontend/dist/
+frontend/.vite/
+
+# === Data / Models (too large for git) ===
+backend/data/uploads/
+backend/data/bm25_index.pkl
+backend/data/*.pkl
+
+# === HuggingFace model cache ===
+.cache/
+*.bin
+*.safetensors
+
+# === IDE / OS ===
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+*.swp
+
+# === Docker ===
+*.tar
+
+# === Logs ===
+*.log
+logs/
+
+# === Tests (not needed in production) ===
+tests/
+backend/tests/
+backend/scripts/test_*.py
+**/test_*.py
+
+# === Planning / Docs (internal only) ===
+planning/
+*.md
+!README.md
+
+# === Images & media in root ===
+*.png
+*.jpg
+*.jpeg
+flow.md

@@ -1,0 +1,18 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+.env
+
+# Data (will be mounted as volume)
+data/corpus/*.pdf
+data/bm25_index.pkl
+data/uploads/
+
+# Dev files
+tests/
+scripts/test_*.py
+.git/
+.gitignore
+*.md

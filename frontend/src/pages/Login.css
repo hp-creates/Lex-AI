@@ -1,0 +1,112 @@
+.login-page {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--color-beige);
+  padding: var(--space-xl);
+}
+
+.login-card {
+  width: 100%;
+  max-width: 400px;
+  background: #fff;
+  border: 1px solid var(--beige-border);
+  border-radius: var(--radius-xl);
+  padding: var(--space-2xl) var(--space-xl);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-md);
+  box-shadow: var(--shadow-md);
+  animation: slideUp 400ms ease forwards;
+}
+
+.login-logo {
+  font-size: 3rem;
+  color: var(--color-primary);
+  line-height: 1;
+}
+
+.login-title {
+  font-size: 1.8rem;
+  font-weight: 800;
+  color: var(--color-primary-deep);
+  letter-spacing: -0.02em;
+  margin-top: calc(-1 * var(--space-sm));
+}
+
+.login-subtitle {
+  font-size: 0.82rem;
+  color: var(--color-text-muted);
+  text-align: center;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+}
+
+.login-divider {
+  width: 40px;
+  height: 2px;
+  background: var(--color-primary);
+  border-radius: var(--radius-full);
+  margin: var(--space-xs) 0;
+}
+
+.login-desc {
+  font-size: 0.88rem;
+  color: var(--color-text-secondary);
+  text-align: center;
+  line-height: 1.6;
+  max-width: 300px;
+}
+
+/* Google button */
+.btn-google {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-sm);
+  padding: var(--space-md) var(--space-xl);
+  background: var(--color-primary-deep);
+  color: var(--color-text-on-dark);
+  border: none;
+  border-radius: var(--radius-md);
+  font-size: 0.95rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background var(--transition-fast);
+  margin-top: var(--space-sm);
+}
+.btn-google:hover { background: var(--color-primary-dark); }
+.btn-google:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.login-legal {
+  font-size: 0.72rem;
+  color: var(--color-text-muted);
+  text-align: center;
+  line-height: 1.5;
+  max-width: 280px;
+}
+
+/* Loading state (for ProtectedRoute) */
+.auth-loading {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--color-beige);
+}
+
+.auth-spinner {
+  width: 32px;
+  height: 32px;
+  border: 3px solid rgba(0, 112, 74, 0.15);
+  border-top-color: var(--color-primary);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}

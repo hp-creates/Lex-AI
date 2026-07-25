@@ -1,0 +1,256 @@
+/* ============================================================
+   LexAI — Global Design System
+   Starbucks-inspired: forest green + warm beige, minimal, flat
+   ============================================================ */
+
+*,
+*::before,
+*::after {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+:root {
+  /* --- Starbucks Green Palette --- */
+  --color-primary:        #00704A;   /* Starbucks signature green */
+  --color-primary-light:  #1E8C5A;
+  --color-primary-dark:   #00573A;   /* dark forest green */
+  --color-primary-deep:   #1E3932;   /* navbar / sidebar bg */
+  --color-primary-glow:   rgba(0, 112, 74, 0.18);
+
+  /* --- Beige / Cream Palette --- */
+  --color-beige:          #F2EFE8;   /* main chat background */
+  --color-beige-dark:     #E8E3D9;   /* subtle borders on beige */
+  --color-beige-light:    #FAF8F4;   /* elevated surfaces */
+
+  /* --- Functional Colors --- */
+  --color-success:  #00704A;
+  --color-warning:  #C9973C;
+  --color-error:    #C0392B;
+  --color-info:     #2E7D8C;
+
+  /* --- Backgrounds --- */
+  --color-bg:            var(--color-beige);        /* page background */
+  --color-bg-secondary:  var(--color-primary-deep); /* sidebar */
+  --color-surface:       var(--color-beige-light);  /* cards / bubbles */
+  --color-surface-hover: var(--color-beige-dark);
+
+  /* --- Borders --- */
+  --glass-border: rgba(0, 112, 74, 0.2);
+  --beige-border: rgba(0, 0, 0, 0.08);
+
+  /* --- Text --- */
+  --color-text:           #1E3932;   /* dark forest green — primary text */
+  --color-text-secondary: #3D6457;   /* medium green */
+  --color-text-muted:     #7A9E91;   /* muted sage */
+  --color-text-on-dark:   #D4E9E2;   /* text ON dark green backgrounds */
+  --color-text-muted-on-dark: #7BADA0;
+
+  /* --- Shape --- */
+  --radius-sm:   6px;
+  --radius-md:   10px;
+  --radius-lg:   14px;
+  --radius-xl:   20px;
+  --radius-full: 9999px;
+
+  /* --- Spacing --- */
+  --space-xs:  4px;
+  --space-sm:  8px;
+  --space-md:  16px;
+  --space-lg:  24px;
+  --space-xl:  32px;
+  --space-2xl: 48px;
+  --space-3xl: 64px;
+
+  /* --- Typography --- */
+  --font-main: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+
+  /* --- Shadows (subtle, no color) --- */
+  --shadow-sm: 0 1px 4px rgba(0, 0, 0, 0.08);
+  --shadow-md: 0 2px 12px rgba(0, 0, 0, 0.10);
+  --shadow-lg: 0 4px 24px rgba(0, 0, 0, 0.12);
+
+  /* --- Transitions --- */
+  --transition-fast:   150ms ease;
+  --transition-normal: 250ms ease;
+  --transition-slow:   400ms cubic-bezier(0.16, 1, 0.3, 1);
+
+  --navbar-height: 60px;
+}
+
+html {
+  font-size: 16px;
+  scroll-behavior: smooth;
+  -webkit-font-smoothing: antialiased;
+}
+
+body {
+  font-family: var(--font-main);
+  background: var(--color-bg);
+  color: var(--color-text);
+  line-height: 1.6;
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+#root {
+  position: relative;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+a {
+  color: var(--color-primary);
+  text-decoration: none;
+  transition: color var(--transition-fast);
+}
+a:hover { color: var(--color-primary-dark); }
+
+::-webkit-scrollbar { width: 5px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb {
+  background: rgba(0, 112, 74, 0.25);
+  border-radius: var(--radius-full);
+}
+::-webkit-scrollbar-thumb:hover { background: rgba(0, 112, 74, 0.45); }
+
+/* --- Animations --- */
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(16px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes typing-bounce {
+  0%, 80%, 100% { transform: translateY(0); }
+  40%           { transform: translateY(-6px); }
+}
+
+/* ============================================================
+   Buttons — flat, no gradients
+   ============================================================ */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-sm);
+  padding: var(--space-sm) var(--space-lg);
+  border: none;
+  border-radius: var(--radius-md);
+  font-family: var(--font-main);
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  white-space: nowrap;
+}
+.btn:active { transform: scale(0.98); }
+
+/* Primary — solid green */
+.btn-primary {
+  background: var(--color-primary);
+  color: #fff;
+}
+.btn-primary:hover {
+  background: var(--color-primary-dark);
+}
+
+/* Secondary — beige outlined */
+.btn-secondary {
+  background: transparent;
+  color: var(--color-text);
+  border: 1px solid var(--beige-border);
+}
+.btn-secondary:hover {
+  background: var(--color-beige-dark);
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+}
+
+/* Secondary ON dark backgrounds (sidebar) */
+.btn-secondary-dark {
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--color-text-on-dark);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+}
+.btn-secondary-dark:hover {
+  background: rgba(255, 255, 255, 0.14);
+}
+
+.btn-danger {
+  background: rgba(192, 57, 43, 0.1);
+  color: var(--color-error);
+  border: 1px solid rgba(192, 57, 43, 0.25);
+}
+.btn-danger:hover { background: rgba(192, 57, 43, 0.18); }
+
+.btn-lg {
+  padding: var(--space-md) var(--space-xl);
+  font-size: 1rem;
+  border-radius: var(--radius-lg);
+}
+
+/* ============================================================
+   Input — beige bg, green focus border
+   ============================================================ */
+.input {
+  width: 100%;
+  padding: var(--space-sm) var(--space-md);
+  background: var(--color-beige-light);
+  border: 1.5px solid var(--beige-border);
+  border-radius: var(--radius-md);
+  color: var(--color-text);
+  font-family: var(--font-main);
+  font-size: 0.95rem;
+  transition: border-color var(--transition-fast);
+  outline: none;
+}
+.input:focus {
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px var(--color-primary-glow);
+}
+.input::placeholder { color: var(--color-text-muted); }
+
+/* ============================================================
+   Badges
+   ============================================================ */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 10px;
+  border-radius: var(--radius-full);
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+.badge-success { background: rgba(0, 112, 74, 0.12); color: var(--color-primary-dark); }
+.badge-warning { background: rgba(201, 151, 60, 0.15); color: var(--color-warning); }
+.badge-error   { background: rgba(192, 57, 43, 0.12); color: var(--color-error); }
+.badge-info    { background: rgba(0, 112, 74, 0.08); color: var(--color-primary); border: 1px solid rgba(0, 112, 74, 0.2); }
+
+/* ============================================================
+   Card — beige surface, subtle border
+   ============================================================ */
+.card {
+  background: var(--color-surface);
+  border: 1px solid var(--beige-border);
+  border-radius: var(--radius-lg);
+  padding: var(--space-lg);
+  transition: all var(--transition-normal);
+}
+.card:hover {
+  border-color: var(--color-primary);
+  box-shadow: var(--shadow-md);
+}
+
+@media (max-width: 768px) {
+  :root {
+    --space-lg: 16px;
+    --space-xl: 24px;
+    --navbar-height: 52px;
+  }
+}
