@@ -161,8 +161,8 @@ def ingest_corpus(corpus_dir: str = "data/corpus"):
         print(f"  [3/4] Embedding {len(chunks)} chunks...")
         chunk_texts = [c["text"] for c in chunks]
 
-        # Process in batches of 32 to avoid memory issues
-        BATCH_SIZE = 32
+        # Process in batches of 4 to avoid memory issues (OOM kills) on EC2
+        BATCH_SIZE = 4
         all_embeddings = []
         for i in range(0, len(chunk_texts), BATCH_SIZE):
             batch = chunk_texts[i:i + BATCH_SIZE]
