@@ -13,5 +13,5 @@ wheels/
 .env
 
 # Data files (too large for git)
-data/corpus/
+# data/corpus/
 data/bm25_index.pkl
