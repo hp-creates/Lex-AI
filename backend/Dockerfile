@@ -18,8 +18,12 @@ WORKDIR /build
 COPY pyproject.toml uv.lock* ./
 
 # Install dependencies into a virtual environment
+# Use CPU-only PyTorch (no NVIDIA CUDA — EC2 has no GPU, saves ~5GB)
 RUN uv venv /build/.venv && \
-    uv sync --no-dev --frozen 2>/dev/null || uv sync --no-dev
+    UV_EXTRA_INDEX_URL=https://download.pytorch.org/whl/cpu \
+    uv sync --no-dev --frozen 2>/dev/null || \
+    UV_EXTRA_INDEX_URL=https://download.pytorch.org/whl/cpu \
+    uv sync --no-dev
 
 # --- Stage 2: Runtime ---
 FROM python:3.13-slim AS runtime
@@ -44,7 +48,6 @@ ENV PYTHONUNBUFFERED=1
 # Copy application code
 COPY app/ ./app/
 COPY scripts/ ./scripts/
-COPY data/ ./data/
 
 # Create directories for runtime data
 RUN mkdir -p /app/data/corpus /app/data/uploads
