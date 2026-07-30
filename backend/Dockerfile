@@ -19,12 +19,13 @@ COPY pyproject.toml uv.lock* ./
 
 # Install dependencies into a virtual environment
 # Use CPU-only PyTorch (no NVIDIA CUDA — EC2 has no GPU, saves ~5GB)
-# Create venv at /app/.venv so shebang paths match runtime stage
+# UV_PROJECT_ENVIRONMENT tells uv to install into /app/.venv (matches runtime path)
+ENV UV_PROJECT_ENVIRONMENT=/app/.venv
 RUN uv venv /app/.venv && \
     UV_EXTRA_INDEX_URL=https://download.pytorch.org/whl/cpu \
-    uv sync --no-dev --frozen --python /app/.venv/bin/python 2>/dev/null || \
+    uv sync --no-dev --frozen 2>/dev/null || \
     UV_EXTRA_INDEX_URL=https://download.pytorch.org/whl/cpu \
-    uv sync --no-dev --python /app/.venv/bin/python
+    uv sync --no-dev
 
 # --- Stage 2: Runtime ---
 FROM python:3.13-slim AS runtime
@@ -60,5 +61,5 @@ HEALTHCHECK --interval=30s --timeout=10s --retries=3 \
 # Expose port
 EXPOSE 8000
 
-# Start uvicorn (single worker for t3.medium — Jina model is heavy)
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "1"]
+# Start uvicorn (python -m avoids shebang path issues in multi-stage builds)
+CMD ["python", "-m", "uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "1"]
