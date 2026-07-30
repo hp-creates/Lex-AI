@@ -19,11 +19,12 @@ COPY pyproject.toml uv.lock* ./
 
 # Install dependencies into a virtual environment
 # Use CPU-only PyTorch (no NVIDIA CUDA — EC2 has no GPU, saves ~5GB)
-RUN uv venv /build/.venv && \
+# Create venv at /app/.venv so shebang paths match runtime stage
+RUN uv venv /app/.venv && \
     UV_EXTRA_INDEX_URL=https://download.pytorch.org/whl/cpu \
-    uv sync --no-dev --frozen 2>/dev/null || \
+    uv sync --no-dev --frozen --python /app/.venv/bin/python 2>/dev/null || \
     UV_EXTRA_INDEX_URL=https://download.pytorch.org/whl/cpu \
-    uv sync --no-dev
+    uv sync --no-dev --python /app/.venv/bin/python
 
 # --- Stage 2: Runtime ---
 FROM python:3.13-slim AS runtime
@@ -38,7 +39,7 @@ RUN apt-get update && \
 WORKDIR /app
 
 # Copy virtual environment from builder
-COPY --from=builder /build/.venv /app/.venv
+COPY --from=builder /app/.venv /app/.venv
 
 # Add venv to PATH
 ENV PATH="/app/.venv/bin:$PATH"
