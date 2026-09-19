@@ -56,19 +56,11 @@ class IncrementalBM25:
         query: str,
         top_k: int = 5,
         filter_user_id: str | None = None,
+        filter_doc_id: str | None = None,
         filter_collection: str | None = None,
     ) -> list[dict]:
         """
-        Search the BM25 index.
-
-        Args:
-            query: Search query string
-            top_k: Number of results to return
-            filter_user_id: Only return docs from this user (+ law corpus)
-            filter_collection: Only return docs from this collection
-
-        Returns:
-            List of results with doc data and BM25 score
+        Search the BM25 index with optional metadata filtering.
         """
         if not self._index or not self.corpus:
             return []
@@ -84,16 +76,19 @@ class IncrementalBM25:
 
             doc = self.corpus[i]
             meta = doc.get("metadata", {})
+            doc_collection = meta.get("collection", "")
 
-            # Apply user filter: show law corpus to everyone, user docs only to owner
-            if filter_user_id:
-                doc_collection = meta.get("collection", "")
-                doc_user_id = meta.get("user_id", "")
-                if doc_collection == "user_documents" and doc_user_id != filter_user_id:
+            # If user_documents, only include if this chat has this doc_id attached
+            if doc_collection == "user_documents":
+                if not filter_doc_id:
+                    continue  # No doc attached to this chat — skip other chats' docs
+                if meta.get("doc_id", "") != filter_doc_id:
+                    continue
+                if filter_user_id and meta.get("user_id", "") != filter_user_id:
                     continue
 
             # Apply collection filter
-            if filter_collection and meta.get("collection", "") != filter_collection:
+            if filter_collection and doc_collection != filter_collection:
                 continue
 
             scored_docs.append({

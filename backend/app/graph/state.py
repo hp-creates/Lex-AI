@@ -15,6 +15,8 @@ class RAGState(TypedDict):
     question: str                      # Original user question
     user_id: str                       # Supabase user UUID
     doc_id: str                        # Optional: specific doc to search
+    session_id: str                    # Optional: chat session ID
+    chat_history: list[dict]           # Recent conversation turns (max 3)
 
     # === Retrieval ===
     query_to_search: str               # May be rewritten by rewrite_query node
@@ -33,3 +35,5 @@ class RAGState(TypedDict):
     citations: list[dict]              # Source attribution per chunk used
     confidence: float                  # Top RRF/similarity score
     response_type: str                 # "answer" | "rejection" | "no_context"
+    web_search_used: bool              # Whether Tavily web search was invoked
+

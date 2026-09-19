@@ -13,5 +13,10 @@ wheels/
 .env
 
 # Data files (too large for git)
-# data/corpus/
-data/bm25_index.pkl
+data/corpus/*.pdf
+/tests
+/scratch
+# data/bm25_index.pkl — tracked: needed for Render deployment (14MB, within GitHub limit)
+
+# LangGraph API
+.langgraph_api

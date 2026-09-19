@@ -4,10 +4,9 @@ No auth required. Reports status of core services.
 """
 
 from fastapi import APIRouter
-from qdrant_client import QdrantClient
-from qdrant_client.http.exceptions import UnexpectedResponse
 
 from app.config import settings
+from app.services.vector_store import vector_store
 
 router = APIRouter(tags=["health"])
 
@@ -22,11 +21,9 @@ async def health_check():
     qdrant_status = "disconnected"
 
     try:
-        client = QdrantClient(host=settings.QDRANT_HOST, port=settings.QDRANT_PORT, timeout=5)
-        # Simple connectivity check — list collections
-        client.get_collections()
+        vector_store.client.get_collections()
         qdrant_status = "connected"
-    except (UnexpectedResponse, Exception) as e:
+    except Exception as e:
         qdrant_status = f"error: {str(e)[:100]}"
 
     return {
@@ -35,3 +32,4 @@ async def health_check():
         "environment": settings.ENVIRONMENT,
         "qdrant": qdrant_status,
     }
+

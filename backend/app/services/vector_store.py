@@ -32,13 +32,27 @@ class VectorStore:
     _client: QdrantClient | None = None
 
     def init_client(self):
-        """Connect to Qdrant. Call once at startup."""
-        self._client = QdrantClient(
-            host=settings.QDRANT_HOST,
-            port=settings.QDRANT_PORT,
-            timeout=30,
-        )
-        print(f"[QDRANT] Connected to {settings.QDRANT_HOST}:{settings.QDRANT_PORT}")
+        """Connect to Qdrant. Call once at startup.
+
+        Cloud mode: uses QDRANT_URL + QDRANT_API_KEY (for Qdrant Cloud).
+        Local mode: uses QDRANT_HOST + QDRANT_PORT (for Docker dev).
+        """
+        if settings.QDRANT_URL:
+            # Cloud connection (Qdrant Cloud / managed instance)
+            self._client = QdrantClient(
+                url=settings.QDRANT_URL,
+                api_key=settings.QDRANT_API_KEY or None,
+                timeout=60,
+            )
+            print(f"[QDRANT] Connected to cloud: {settings.QDRANT_URL}")
+        else:
+            # Local Docker connection
+            self._client = QdrantClient(
+                host=settings.QDRANT_HOST,
+                port=settings.QDRANT_PORT,
+                timeout=30,
+            )
+            print(f"[QDRANT] Connected to local: {settings.QDRANT_HOST}:{settings.QDRANT_PORT}")
 
     @property
     def client(self) -> QdrantClient:
@@ -167,6 +181,7 @@ class VectorStore:
                     query_vector=query_vector,
                     limit=top_k,
                     query_filter=query_filter,
+                    score_threshold=0.15,  # Filter near-zero similarity (model-mismatch protection)
                     with_payload=True,
                 )
 

@@ -110,6 +110,55 @@
   font-size: 0.88rem;
 }
 
+/* --- Markdown Tables --- */
+.md-table-wrapper {
+  width: 100%;
+  overflow-x: auto;
+  margin: var(--space-md) 0;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--beige-border);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+}
+
+.md-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.88rem;
+  text-align: left;
+}
+
+.md-thead {
+  background-color: var(--color-surface-hover);
+  border-bottom: 2px solid var(--beige-border);
+}
+
+.md-th {
+  padding: 10px 14px;
+  font-weight: 600;
+  color: var(--color-text);
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+}
+
+.md-td {
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--beige-border);
+  color: var(--color-text-secondary);
+  line-height: 1.5;
+}
+
+.md-tr:last-child .md-td {
+  border-bottom: none;
+}
+
+.md-tr:nth-child(even) {
+  background-color: rgba(0, 0, 0, 0.015);
+}
+
+.md-tr:hover {
+  background-color: rgba(0, 112, 74, 0.04);
+}
+
 .message-citations {
   margin-top: var(--space-md);
   padding-top: var(--space-md);

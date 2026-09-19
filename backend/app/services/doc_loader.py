@@ -21,7 +21,7 @@ def load_pdf(file_path: str | None = None, file_bytes: bytes | None = None) -> s
 
     Args:
         file_path: Path to PDF file on disk
-        file_bytes: Raw PDF bytes (from S3 download or upload)
+        file_bytes: Raw PDF bytes (from user upload)
 
     Returns:
         Cleaned Markdown text
@@ -131,7 +131,8 @@ def convert_to_markdown(raw_text: str) -> str:
     Convert extracted text to clean Markdown format.
 
     Transformations:
-    - Detect section headers (Section X, Article X) and convert to ## headers
+    - Detect section headers (Section X, Article X, bare "X. Title") and convert to ## headers
+    - Detect Chapter/Part headers and convert to # headers
     - Clean excessive whitespace
     - Preserve numbered lists and sub-clauses
     - Strip page numbers and footers
@@ -148,25 +149,45 @@ def convert_to_markdown(raw_text: str) -> str:
     text = re.sub(r'\f', '\n\n', text)  # Form feeds → paragraph breaks
     text = re.sub(r'(?m)^\s*\d+\s*$', '', text)  # Standalone page numbers
 
-    # Detect and convert section headers for Indian legal documents
-    # Pattern: "Section 96." or "SECTION 96." or "Section 96 —"
+    # ============================================================
+    # CHAPTER / PART headers → # (top-level heading)
+    # ============================================================
+    # Pattern: "CHAPTER I" or "Chapter I" or "PART III" or "PART XII"
     text = re.sub(
-        r'(?m)^(?:SECTION|Section)\s+(\d+[A-Z]?)\s*[.:\-—]\s*(.*)$',
+        r'(?m)^(?:CHAPTER|Chapter|PART|Part)\s+([IVXLCDM]+|\d+)\s*[.:\-—]?\s*(.*)',
+        r'# \g<0>',
+        text
+    )
+
+    # ============================================================
+    # SECTION / ARTICLE headers → ## (section-level heading)
+    # ============================================================
+
+    # Pattern 1: Explicit "Section N." or "SECTION N." or "Section N —"
+    text = re.sub(
+        r'(?m)^(?:SECTION|Section)\s+(\d+[A-Z]?)\s*[.:\-—]\s*(.*)',
         r'## Section \1. \2',
         text
     )
 
-    # Pattern: "Article 21." or "ARTICLE 21."
+    # Pattern 2: Explicit "Article N." or "ARTICLE N."
     text = re.sub(
-        r'(?m)^(?:ARTICLE|Article)\s+(\d+[A-Z]?)\s*[.:\-—]\s*(.*)$',
+        r'(?m)^(?:ARTICLE|Article)\s+(\d+[A-Z]?)\s*[.:\-—]\s*(.*)',
         r'## Article \1. \2',
         text
     )
 
-    # Pattern: "CHAPTER I" or "Chapter I" or "PART III"
+    # Pattern 3: Bare number format "N. Title" (most common in Indian law PDFs)
+    # e.g., "302. Punishment for murder.—Whoever commits..."
+    # Rules:
+    #   - Must be at line start
+    #   - Number 1-9999, optionally followed by A-Z suffix (e.g., 304A)
+    #   - Followed by ". " then an uppercase letter (the title)
+    #   - Title must be 5+ chars (avoids matching "(1). a sub-clause")
+    #   - Must NOT already be a ## header (avoid double-conversion)
     text = re.sub(
-        r'(?m)^(?:CHAPTER|Chapter|PART|Part)\s+([IVXLCDM]+|\d+)\s*[.:\-—]?\s*(.*)$',
-        r'# \g<0>',
+        r'(?m)^(?!## )(\d{1,4}[A-Z]?)\.\s+([A-Z][^\n]{4,})',
+        r'## Section \1. \2',
         text
     )
 

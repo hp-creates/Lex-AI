@@ -1,17 +1,15 @@
 # ============================================================
-# LexAI — Docker Compose (Production)
+# LexAI — Docker Compose (Local Development)
 #
 # Services:
 #   1. qdrant     — Vector database (persists to ./qdrant_data)
-#   2. backend    — FastAPI + Jina v3 + LangGraph RAG pipeline
+#   2. backend    — FastAPI + LangGraph RAG pipeline
 #   3. frontend   — Vite React served by nginx (port 80)
 #
 # Usage:
 #   docker compose up -d --build
-#   docker compose logs -f backend   (watch for model loading)
+#   docker compose logs -f backend   (watch logs)
 #   docker compose down               (stop all)
-#
-# Target: AWS EC2 t3.medium (4GB RAM)
 # ============================================================
 
 services:
@@ -38,12 +36,11 @@ services:
     depends_on:
       - qdrant
     env_file:
-      - ./backend/.env.production
+      - ./backend/.env
     environment:
       # Override Qdrant host to Docker service name
       - QDRANT_HOST=qdrant
       - QDRANT_PORT=6333
-      - ENVIRONMENT=production
     volumes:
       # Persist corpus PDFs and BM25 index across restarts
       - ./backend/data:/app/data

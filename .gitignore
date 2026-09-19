@@ -24,8 +24,8 @@ frontend/.vite/
 
 # === Data / Models (too large for git) ===
 backend/data/uploads/
-backend/data/bm25_index.pkl
 backend/data/*.pkl
+!backend/data/bm25_index.pkl
 
 # === HuggingFace model cache ===
 .cache/
@@ -45,6 +45,7 @@ Thumbs.db
 # === Logs ===
 *.log
 logs/
+output/*.log
 
 # === Tests (not needed in production) ===
 tests/
@@ -56,9 +57,19 @@ backend/scripts/test_*.py
 planning/
 *.md
 !README.md
+!CASE_STUDY.md
 
 # === Images & media in root ===
 *.png
 *.jpg
 *.jpeg
+!output/*.png
 flow.md
+
+# LangGraph API
+.langgraph_api/
+**/.langgraph_api/
+
+# Scratch scripts
+scratch/
+backend/scratch/

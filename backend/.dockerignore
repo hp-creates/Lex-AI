@@ -5,9 +5,9 @@ __pycache__/
 .venv/
 .env
 
-# Data (will be mounted as volume)
+# Data (corpus PDFs and uploads are NOT needed at runtime)
 data/corpus/*.pdf
-data/bm25_index.pkl
+# data/bm25_index.pkl — NOT ignored: baked into image for cloud deployment
 data/uploads/
 
 # Dev files

@@ -10,7 +10,10 @@ Nodes:
 6. check_hallucination - LLM checks if answer is grounded in sources
 7. format_response - Attach citations, disclaimer, confidence
 8. reject          - Return polite off-topic rejection
+9. web_search      - Tavily fallback when corpus has no relevant docs
 """
+
+import re
 
 from langchain_groq import ChatGroq
 
@@ -21,8 +24,68 @@ from app.prompts.system_prompt import (
     GRADING_PROMPT,
     REWRITE_PROMPT,
     HALLUCINATION_CHECK_PROMPT,
+    CONTEXTUALIZE_PROMPT,
 )
 from app.services.hybrid_retriever import hybrid_search
+from app.services.web_search import tavily_search
+
+
+def _strip_think(text: str) -> str:
+    """Strip <think>...</think> reasoning blocks from model outputs."""
+    return re.sub(r"<think>[\s\S]*?</think>", "", text).strip()
+
+
+def _extract_content(response) -> str:
+    """
+    Extract text content from an LLM response.
+
+    Handles two response styles:
+    - Standard chat models (e.g. llama-*): content is in response.content
+    - Reasoning/GPT-OSS models (e.g. openai/gpt-oss-20b): the final answer
+      is in response.content; reasoning trace is in additional_kwargs['reasoning_content'].
+      However if content is empty, fall back to reasoning_content so we
+      always return something useful.
+    """
+    content = response.content or ""
+    if not content.strip():
+        # Reasoning model returned empty content — try additional_kwargs
+        ak = getattr(response, "additional_kwargs", {}) or {}
+        content = (
+            ak.get("reasoning_content")
+            or ak.get("content")
+            or ""
+        )
+    return _strip_think(content)
+
+
+def _extract_verdict(response, positive_keyword: str = "yes") -> bool:
+    """
+    Extract a binary yes/no verdict from a reasoning model response.
+
+    Unlike _extract_content (which may fall back to the full reasoning trace),
+    this function checks response.content FIRST (the final answer field) and
+    only falls back to the LAST word of reasoning_content.
+
+    This prevents false matches like the reasoning trace containing
+    "the document is not relevant" being matched by `'yes' in text`.
+    """
+    # 1. Check response.content first — this is the final answer for reasoning models
+    content = (response.content or "").strip()
+    content = _strip_think(content)
+    if content:
+        # Take only the last line/word to avoid matching stray occurrences
+        last_line = content.strip().splitlines()[-1].strip().lower()
+        return positive_keyword in last_line
+
+    # 2. Fallback: check reasoning_content, but only the LAST line
+    ak = getattr(response, "additional_kwargs", {}) or {}
+    reasoning = ak.get("reasoning_content", "").strip()
+    if reasoning:
+        last_line = reasoning.strip().splitlines()[-1].strip().lower()
+        return positive_keyword in last_line
+
+    # 3. No content at all — fail-open (assume relevant)
+    return True
 
 
 def _get_llm() -> ChatGroq:
@@ -31,7 +94,7 @@ def _get_llm() -> ChatGroq:
         api_key=settings.GROQ_API_KEY,
         model=settings.GROQ_MODEL,
         temperature=0,
-        max_tokens=2048,
+        max_tokens=4096,  # Raised from 2048 — prevents cut-off responses
     )
 
 
@@ -74,6 +137,41 @@ def route_input(state: RAGState) -> dict:
     }
 
 
+def contextualize_query(state: RAGState) -> dict:
+    """
+    Node 1.5: If chat history exists, rewrite the query to be standalone.
+    Example: "what are the charges?" -> "what are the charges mentioned in FIR 0184?"
+    """
+    history = state.get("chat_history", [])
+    question = state["question"]
+
+    if not history:
+        # No history, no need to contextualize
+        return {"query_to_search": question}
+
+    llm = _get_llm()
+    
+    # Format history as a readable string
+    history_str = ""
+    for msg in history:
+        role = "User" if msg.get("role") == "user" else "Assistant"
+        history_str += f"{role}: {msg.get('content')}\n"
+
+    prompt = CONTEXTUALIZE_PROMPT.format(
+        chat_history=history_str.strip(),
+        question=question
+    )
+
+    try:
+        response = llm.invoke(prompt)
+        standalone_query = _extract_content(response)
+        print(f"[CONTEXTUALIZE] '{question}' -> '{standalone_query}'")
+        return {"query_to_search": standalone_query}
+    except Exception as e:
+        print(f"[CONTEXTUALIZE] Error: {e}")
+        return {"query_to_search": question}
+
+
 def retrieve(state: RAGState) -> dict:
     """
     Node 2: Run hybrid search (vector + BM25 -> RRF).
@@ -83,11 +181,12 @@ def retrieve(state: RAGState) -> dict:
     user_id = state.get("user_id", "")
     doc_id = state.get("doc_id", "")
 
+
     results = hybrid_search(
         query=query,
         user_id=user_id if user_id else None,
         doc_id=doc_id if doc_id else None,
-        top_k=5,
+        top_k=6,  # Raised from 3 — senior review: top_k=3 likely cuts off relevant chunks
     )
 
     return {
@@ -100,7 +199,10 @@ def grade_docs(state: RAGState) -> dict:
     """
     Node 3: LLM grades each retrieved chunk for relevance.
     Only chunks graded "yes" pass to the generation step.
+    Uses ThreadPoolExecutor to grade all chunks in PARALLEL (~1.5s vs ~7s sequential).
     """
+    from concurrent.futures import ThreadPoolExecutor, as_completed
+
     llm = _get_llm()
     question = state["question"]
     docs = state.get("retrieved_docs", [])
@@ -108,24 +210,43 @@ def grade_docs(state: RAGState) -> dict:
     if not docs:
         return {"relevant_docs": []}
 
-    relevant = []
-    for doc in docs:
+    def _grade_single(doc: dict) -> tuple[dict, bool]:
+        """Grade a single doc chunk. Returns (doc, is_relevant)."""
+        # Include metadata in grading context so the LLM can see source/section info
+        source = doc.get("source", "Unknown")
+        section = doc.get("section", "")
+        section_title = doc.get("section_title", "")
+        meta_header = f"[Source: {source}"
+        if section:
+            meta_header += f" | Section: {section}"
+        if section_title:
+            meta_header += f" | Title: {section_title}"
+        meta_header += "]\n"
+
+        doc_text = meta_header + doc.get("text", "")[:600]
         prompt = GRADING_PROMPT.format(
             question=question,
-            document=doc.get("text", "")[:500],  # Truncate for grading
+            document=doc_text,
         )
-
         try:
             response = llm.invoke(prompt)
-            grade = response.content.strip().lower()
-
-            if "yes" in grade:
-                relevant.append(doc)
+            is_relevant = _extract_verdict(response, "yes")
+            print(f"[GRADE] {'PASS' if is_relevant else 'FAIL'}: {source} {section} — raw='{(response.content or '')[:80]}'")
+            return (doc, is_relevant)
         except Exception as e:
             print(f"[GRADE] Error grading doc: {e}")
-            # On error, include the doc (fail-open)
-            relevant.append(doc)
+            return (doc, True)  # Fail-open: include on error
 
+    # Run all grading calls in parallel
+    relevant = []
+    with ThreadPoolExecutor(max_workers=len(docs)) as executor:
+        futures = {executor.submit(_grade_single, doc): doc for doc in docs}
+        for future in as_completed(futures):
+            doc, is_relevant = future.result()
+            if is_relevant:
+                relevant.append(doc)
+
+    print(f"[GRADE] {len(relevant)}/{len(docs)} chunks passed relevance grading")
     return {"relevant_docs": relevant}
 
 
@@ -141,7 +262,7 @@ def rewrite_query(state: RAGState) -> dict:
 
     try:
         response = llm.invoke(prompt)
-        rewritten = response.content.strip()
+        rewritten = _extract_content(response)
         print(f"[REWRITE] '{question}' -> '{rewritten}'")
         return {"query_to_search": rewritten}
     except Exception as e:
@@ -170,7 +291,7 @@ def generate(state: RAGState) -> dict:
         source = doc.get("source", "Unknown")
         section = doc.get("section", "Unknown")
         text = doc.get("text", "")
-        context_parts.append(f"[Document {i+1}] Source: {source} | {section}\n{text}")
+        context_parts.append(f"[{source} | {section}]\n{text}")
 
     context = "\n\n---\n\n".join(context_parts)
 
@@ -194,7 +315,7 @@ def generate(state: RAGState) -> dict:
         ]
 
         response = llm.invoke(messages)
-        answer = response.content.strip()
+        answer = _extract_content(response)
 
         return {
             "answer": answer,
@@ -220,9 +341,9 @@ def check_hallucination(state: RAGState) -> dict:
     if not relevant_docs or not answer:
         return {"is_hallucinated": False}
 
-    # Build source text for checking
+    # Build source text for checking — use enough text to avoid false positives
     source_text = "\n\n".join([
-        f"[{doc.get('source', '')} | {doc.get('section', '')}]: {doc.get('text', '')[:300]}"
+        f"[{doc.get('source', '')} | {doc.get('section', '')}]: {doc.get('text', '')[:800]}"
         for doc in relevant_docs
     ])
 
@@ -233,11 +354,12 @@ def check_hallucination(state: RAGState) -> dict:
 
     try:
         response = llm.invoke(prompt)
-        verdict = response.content.strip().lower()
-        is_hallucinated = "hallucinated" in verdict
+        is_hallucinated = _extract_verdict(response, "hallucinated")
 
         if is_hallucinated:
-            print(f"[HALLUCINATION] Detected! Will retry generation.")
+            print(f"[HALLUCINATION] Detected! Appending warning (no retry).")
+        else:
+            print(f"[HALLUCINATION] Clean — answer is grounded.")
 
         return {"is_hallucinated": is_hallucinated}
     except Exception as e:
@@ -248,10 +370,12 @@ def check_hallucination(state: RAGState) -> dict:
 def format_response(state: RAGState) -> dict:
     """
     Node 7: Attach citations, confidence scores, and disclaimer.
+    If hallucination was detected, append a warning to the answer.
     """
     relevant_docs = state.get("relevant_docs", [])
     answer = state.get("answer", "")
     response_type = state.get("response_type", "")
+    is_hallucinated = state.get("is_hallucinated", False)
 
     # If no relevant docs were found after retries
     if not relevant_docs and response_type != "rejection":
@@ -260,6 +384,14 @@ def format_response(state: RAGState) -> dict:
             "citations": [],
             "confidence": 0.0,
         }
+
+    # Append hallucination warning if detected
+    if is_hallucinated and answer:
+        answer += (
+            "\n\n> ⚠️ **Verification Notice:** Our automated systems detected that "
+            "parts of this answer might not be fully backed by the source documents. "
+            "Please cross-check with a qualified legal professional."
+        )
 
     # Build citations from relevant docs
     citations = []
@@ -281,6 +413,7 @@ def format_response(state: RAGState) -> dict:
     )
 
     return {
+        "answer": answer,
         "response_type": response_type or "answer",
         "citations": citations,
         "confidence": round(top_confidence, 4),
@@ -297,4 +430,26 @@ def reject(state: RAGState) -> dict:
         "response_type": "rejection",
         "citations": [],
         "confidence": 0.0,
+    }
+
+
+def web_search(state: RAGState) -> dict:
+    """
+    Node 9: Tavily web search fallback.
+    Fires only when corpus retrieval + rewrite yield zero relevant docs.
+    Results are placed into relevant_docs so the generate node can use them.
+    """
+    question = state["question"]
+    query = state.get("query_to_search", question)
+
+    results = tavily_search(query=query, max_results=3)
+
+    if not results:
+        print("[WEB SEARCH] No results — proceeding to format_response")
+        return {"web_search_used": True}
+
+    print(f"[WEB SEARCH] Found {len(results)} web results — sending to generate")
+    return {
+        "relevant_docs": results,
+        "web_search_used": True,
     }

@@ -16,29 +16,46 @@ class Settings(BaseSettings):
     ENVIRONMENT: str = Field(default="development", description="development | production")
     FRONTEND_ORIGIN: str = Field(default="http://localhost:5173", description="CORS allowed origin")
 
-    # === Qdrant (self-hosted in Docker) ===
+    # === Qdrant ===
+    # Cloud mode: set QDRANT_URL + QDRANT_API_KEY (overrides host/port)
+    # Local mode: use QDRANT_HOST + QDRANT_PORT (Docker dev)
+    QDRANT_URL: str = Field(default="", description="Qdrant Cloud URL (overrides host:port when set)")
+    QDRANT_API_KEY: str = Field(default="", description="Qdrant Cloud API key")
     QDRANT_HOST: str = Field(default="localhost", description="Docker service name or localhost")
     QDRANT_PORT: int = Field(default=6333, description="Qdrant REST API port")
     QDRANT_LAW_COLLECTION: str = "indian_law_corpus"
     QDRANT_USER_COLLECTION: str = "user_documents"
 
-    # === Groq (LLM) — needed in Stage 2+ ===
-    GROQ_API_KEY: str = Field(default="", description="Groq API key for LLaMA 3.3 70B")
-    GROQ_MODEL: str = "llama-3.3-70b-versatile"
+    # === Groq (LLM) ===
+    GROQ_API_KEY: str = Field(default="", description="Groq API key")
+    GROQ_MODEL: str = "openai/gpt-oss-20b"  # GPT OSS reasoning model on Groq (llama-3.3-70b deprecated)
+
+    # === Embedding Model (bge-m3) ===
+    # Server runtime uses "api" (HF Inference API, zero RAM).
+    # Corpus ingestion uses "local" via --local flag in ingest_corpus.py.
+    EMBEDDING_MODE: str = Field(default="api", description="'local' or 'api'")
+    EMBEDDING_MODEL: str = Field(default="BAAI/bge-m3", description="HuggingFace model name")
+    HF_API_TOKEN: str = Field(default="", description="HuggingFace API token (required for api mode)")
 
     # === Supabase (Auth + DB) — needed in Stage 3+ ===
     SUPABASE_URL: str = Field(default="", description="Supabase project URL")
     SUPABASE_ANON_KEY: str = Field(default="", description="Public anon key (safe for frontend)")
     SUPABASE_SERVICE_KEY: str = Field(default="", description="Server-side service role key")
 
-    # === AWS S3 — needed in Stage 3+ ===
-    AWS_ACCESS_KEY_ID: str = Field(default="", description="IAM user access key")
-    AWS_SECRET_ACCESS_KEY: str = Field(default="", description="IAM user secret key")
-    AWS_REGION: str = "ap-south-1"
-    S3_BUCKET_NAME: str = Field(default="lexai-documents", description="S3 bucket name")
-
     # === BM25 ===
     BM25_INDEX_PATH: str = Field(default="data/bm25_index.pkl", description="Path to persisted BM25 index")
+
+    # === Tavily (Web Search Fallback) ===
+    TAVILY_API_KEY: str = Field(default="", description="Tavily API key for web search fallback")
+
+    # ==========================================
+    # LangSmith Tracing
+    # ==========================================
+    LANGCHAIN_TRACING_V2: str = Field(default="false", description="Enable LangSmith Tracing")
+    LANGCHAIN_ENDPOINT: str = Field(default="https://api.smith.langchain.com", description="LangSmith API Endpoint")
+    LANGCHAIN_API_KEY: str = Field(default="", description="LangSmith API Key")
+    LANGCHAIN_PROJECT: str = Field(default="lex-ai", description="LangSmith Project Name")
+    # ==========================================
 
     model_config = {
         "env_file": ".env",
@@ -49,3 +66,4 @@ class Settings(BaseSettings):
 
 # Global settings instance — import this everywhere
 settings = Settings()
+
