@@ -18,8 +18,6 @@ For detailed benchmarks, latency reductions, and trace evaluations, see the [Eng
 
 ## System Architecture
 
-![LangGraph Workflow](output/LangGraph.png)
-
 ```mermaid
 graph TD
     User([User Query / Document]) --> RouteInput[route_input]
@@ -145,6 +143,7 @@ npm run dev
 ```
 
 The web application will open at `http://localhost:5173`.
+
 - For detailed frontend configuration, see [Frontend Documentation](./frontend/README.md).
 
 ---
